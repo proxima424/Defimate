@@ -11,5 +11,5 @@ A fungible asset qualifies as "money" if it follows the following three characte
 2) It can be used as MEDIUM OF EXCHANGE
 3) It acts as a STORE OF VALUE
 
-//Write more on stablecoins
+I
 
