@@ -31,7 +31,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 
 error CentralizedStableCoin__NotMinter();                  // Reverts if address without minting authority tries to mint 
 error CentralizedStableCoin__AddressBlacklisted();         // Reverts if blacklisted address tries to call functions
-error CentralizedStableCoin__NotZeroAddress();
+error CentralizedStableCoin__NotZeroAddress();             // Reverts in case address is address(0)
 error CentralizedStableCoin__AmountMustBeMoreThanZero();   // Reverts incase of negative amount
 error CentralizedStableCoin__ExceededMinterAllowance();    // Reverts if transfer amount more than allowance
 error CentralizedStableCoin__BurnAmountExceedsBalance();   
@@ -84,7 +84,12 @@ contract CentralizedStableCoin is ERC20Burnable, Ownable {
 
                       //////////////////////////FUNCTIONS//////////////////////////////////
                       
-
+    /// @notice Brings new ERC20s in existence. ( how else can I explain what mint means? )
+    /// @dev This utilizes _mint() function of the ERC20 openzeppelin standard
+    /// @param _to Address to which New CentralizedStablecoin is to be transferred
+    /// @param _amount Quantity of New CentralizedStablecoin to be minted
+    /// @return Boolean value of function result
+    /// @inheritdoc	Copies all missing tags from the base function (must be followed by the contract name)
     function mint(address _to, uint256 _amount)            
         external
         onlyMinters
@@ -92,31 +97,36 @@ contract CentralizedStableCoin is ERC20Burnable, Ownable {
         notBlacklisted(_to)
         returns (bool)
     {
-        if (_to == address(0)) {
+        if (_to == address(0)) {                                // Check for address(0) so that newly minted coins doesn't end up being in useless address
             revert CentralizedStableCoin__NotZeroAddress();
         }
-        if (_amount <= 0) {
+        if (_amount <= 0) {                                     // This check is imp because underlying _mint() function doesn't check negative amount check
             revert CentralizedStableCoin__AmountMustBeMoreThanZero();
         }
 
         uint256 mintingAllowedAmount = s_minterAllowed[msg.sender];
-        if (_amount > mintingAllowedAmount) {
+        if (_amount > mintingAllowedAmount) {                   // Checks allowed minting amount to msg.sender        
             revert CentralizedStableCoin__ExceededMinterAllowance();
         }
-        s_minterAllowed[msg.sender] = mintingAllowedAmount - _amount;
+        s_minterAllowed[msg.sender] = mintingAllowedAmount - _amount;  // updates minting amount allowance
         _mint(msg.sender, mintingAllowedAmount);
         return true;
     }
-
+    
+    
+    /// @dev This is built upon the burn() function from ERC20Burnable Standard
+    /// @param _amount Amount to be burned
+    /// @notice Only authorized minters and not blacklisted addresses can call this function
+    /// @notice msg.sender can not burn amount more than his balance
     function burn(uint256 _amount) public override onlyMinters notBlacklisted(msg.sender) {
-        uint256 balance = balanceOf(msg.sender);
-        if (_amount <= 0) {
+        uint256 balance = balanceOf(msg.sender);                    
+        if (_amount <= 0) {                                       // Negative check important because Parent function has no negative amount check
             revert CentralizedStableCoin__AmountMustBeMoreThanZero();
         }
-        if (balance < _amount) {
+        if (balance < _amount) {                                 // Can't burn more than what you have
             revert CentralizedStableCoin__BurnAmountExceedsBalance();
         }
-        _burn(msg.sender, _amount);
+        _burn(_msgSender(), _amount);                            // Calls underlying _burn() function from ERC20 Openzeppelin Standard
     }
 
     /***************************/
@@ -190,7 +200,7 @@ contract CentralizedStableCoin is ERC20Burnable, Ownable {
         return true;
     }
 
-    function transfer(address to, uint256 value)
+    function transfer(address to, uint256 value)  
         public
         override
         notBlacklisted(msg.sender)
